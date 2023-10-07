@@ -1,7 +1,7 @@
 import express from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../../data/db";
-import { users } from "../../data/schema";
+import { users, refreshTokens } from "../../data/schema";
 import jwt from "jsonwebtoken";
 
 const auth = express.Router();
@@ -45,6 +45,11 @@ auth.post("/login", async (req, res) => {
       { expiresIn: "1y" }
     );
 
+    const token = await db.insert(refreshTokens).values({
+      token: refreshToken,
+      userId: user.id,
+    });
+
     return res.json({
       email: user.email,
       id: user.id,
@@ -87,6 +92,44 @@ auth.post("/register", async (req, res) => {
     });
 
     return res.status(200).json(user);
+  } catch (e: any) {
+    res.status(500).json({
+      error: e.message,
+    });
+  }
+});
+
+auth.post("/refresh", async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({
+      error: "token not attached",
+    });
+  }
+
+  try {
+    jwt.verify(token, process.env.TOKEN_SECRET as string);
+
+    const result = await db.query.refreshTokens.findFirst({
+      where: (refreshTokens, { eq }) => eq(refreshTokens.token, token),
+    });
+
+    if (!result) {
+      return res.status(400).json({
+        error: "token not found",
+      });
+    }
+
+    const accessToken = jwt.sign(
+      { id: result.userId },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: "1h" }
+    );
+
+    return res.status(200).json({
+      accessToken,
+    });
   } catch (e: any) {
     res.status(500).json({
       error: e.message,

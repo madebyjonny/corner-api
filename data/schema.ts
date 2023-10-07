@@ -1,4 +1,11 @@
-import { pgTable, serial, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  varchar,
+  timestamp,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -9,3 +16,20 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 256 }).unique(),
   hash: varchar("hash", { length: 256 }),
 });
+
+export const usersRelations = relations(users, ({ many }) => ({
+  refreshTokens: many(refreshTokens),
+}));
+
+export const refreshTokens = pgTable("refresh_tokens", {
+  id: serial("id").primaryKey(),
+  token: varchar("token", { length: 256 }),
+  userId: integer("user_id").references(() => users.id),
+});
+
+export const refreshTokenRelations = relations(refreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [refreshTokens.userId],
+    references: [users.id],
+  }),
+}));

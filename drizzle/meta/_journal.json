@@ -8,6 +8,20 @@
       "when": 1696686883890,
       "tag": "0000_rare_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1696715673898,
+      "tag": "0001_tired_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1696715808555,
+      "tag": "0002_stale_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }
