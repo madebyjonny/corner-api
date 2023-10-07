@@ -1,42 +1,71 @@
 import express from "express";
+import { eq } from "drizzle-orm";
 import { db } from "../../data/db";
 import { users } from "../../data/schema";
 import jwt from "jsonwebtoken";
 
 const auth = express.Router();
 
-// auth.post("/login", async (req, res) => {
-//   const { email, password } = req.body;
+auth.post("/login", async (req, res) => {
+  const { email, password } = req.body;
 
-//   try {
-//     if (!user) {
-//       return res.status(400).json({
-//         error: "issue signing in",
-//       });
-//     }
+  if (!email || !password) {
+    return res.status(400).json({
+      error: "missing required fields",
+    });
+  }
 
-//     if (!valid) {
-//       return res.status(400).json({
-//         error: "issue signing in",
-//       });
-//     }
+  try {
+    const result = await db.select().from(users).where(eq(users.email, email));
+    const user = result[0];
 
-//     const token = jwt.sign({ id: user.id }, process.env.TOKEN_SECRET as string);
+    if (!user) {
+      return res.status(400).json({
+        error: "issue signing in",
+      });
+    }
 
-//     return res.json({
-//       email: user.email,
-//       id: user.id,
-//       token,
-//     });
-//   } catch (e: any) {
-//     return res.status(500).json({
-//       error: e.message,
-//     });
-//   }
-// });
+    const valid = await Bun.password.verify(password, user.hash as string);
+
+    if (!valid) {
+      return res.status(400).json({
+        error: "issue signing in",
+      });
+    }
+
+    const accessToken = jwt.sign(
+      { id: user.id },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: "1h" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id },
+      process.env.TOKEN_SECRET as string,
+      { expiresIn: "1y" }
+    );
+
+    return res.json({
+      email: user.email,
+      id: user.id,
+      accessToken,
+      refreshToken,
+    });
+  } catch (e: any) {
+    return res.status(500).json({
+      error: e.message,
+    });
+  }
+});
 
 auth.post("/register", async (req, res) => {
   const { email, password, first_name, last_name } = req.body;
+
+  if (!email || !password || !first_name || !last_name) {
+    return res.status(400).json({
+      error: "missing required fields",
+    });
+  }
 
   try {
     const hash = await Bun.password.hash(password);
